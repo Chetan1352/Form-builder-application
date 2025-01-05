@@ -1,0 +1,66 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+
+# Custom User model, overriding AbstractUser
+class User(AbstractUser):
+    email = models.EmailField(unique=True)
+
+    # Optionally, you can add a custom related_name for groups and user_permissions
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='custom_user_set',  # Unique related_name for groups
+        blank=True
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='custom_user_permissions_set',  # Unique related_name for user_permissions
+        blank=True
+    )
+
+
+class Choices(models.Model):
+    choice = models.CharField(max_length=5000)
+    is_answer = models.BooleanField(default=False)
+
+
+class Questions(models.Model):
+    question = models.CharField(max_length=10000)
+    question_type = models.CharField(max_length=20)
+    required = models.BooleanField(default=False)
+    answer_key = models.CharField(max_length=5000, blank=True)
+    score = models.IntegerField(blank=True, default=0)
+    feedback = models.CharField(max_length=5000, null=True)
+    choices = models.ManyToManyField(Choices, related_name="question_choices")
+
+
+class Answer(models.Model):
+    answer = models.CharField(max_length=5000)
+    answer_to = models.ForeignKey(Questions, on_delete=models.CASCADE, related_name="question_answers")
+
+
+class Form(models.Model):
+    code = models.CharField(max_length=30)
+    title = models.CharField(max_length=200)
+    description = models.CharField(max_length=10000, blank=True)
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_forms")
+    background_color = models.CharField(max_length=20, default="#d9efed")
+    text_color = models.CharField(max_length=20, default="#272124")
+    collect_email = models.BooleanField(default=False)
+    authenticated_responder = models.BooleanField(default=False)
+    edit_after_submit = models.BooleanField(default=False)
+    confirmation_message = models.CharField(max_length=10000, default="Your response has been recorded.")
+    is_quiz = models.BooleanField(default=False)
+    allow_view_score = models.BooleanField(default=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+    questions = models.ManyToManyField(Questions, related_name="forms")
+
+
+class Responses(models.Model):
+    response_code = models.CharField(max_length=20)
+    response_to = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="form_responses")
+    responder_ip = models.CharField(max_length=30)
+    responder = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_responses", blank=True, null=True)
+    responder_email = models.EmailField(blank=True)
+    response = models.ManyToManyField(Answer, related_name="answer_responses")
